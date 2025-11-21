@@ -12,7 +12,7 @@ echo ""
 echo "Waiting for Kafka to be ready..."
 sleep 5
 
-# Create orders topic (main topic)
+# Create orders topic 
 echo "Creating 'orders' topic..."
 docker exec kafka kafka-topics --bootstrap-server $BOOTSTRAP_SERVER --create \
   --topic orders \
@@ -21,7 +21,7 @@ docker exec kafka kafka-topics --bootstrap-server $BOOTSTRAP_SERVER --create \
   --config retention.ms=604800000 \
   --if-not-exists
 
-# Create orders-dlq topic (Dead Letter Queue)
+# Create orders-dlq topic 
 echo "Creating 'orders-dlq' topic..."
 docker exec kafka kafka-topics --bootstrap-server $BOOTSTRAP_SERVER --create \
   --topic orders-dlq \
@@ -30,7 +30,7 @@ docker exec kafka kafka-topics --bootstrap-server $BOOTSTRAP_SERVER --create \
   --config retention.ms=2592000000 \
   --if-not-exists
 
-# Create orders-aggregated topic (optional - for aggregated results)
+# Create orders-aggregated topic 
 echo "Creating 'orders-aggregated' topic..."
 docker exec kafka kafka-topics --bootstrap-server $BOOTSTRAP_SERVER --create \
   --topic orders-aggregated \
