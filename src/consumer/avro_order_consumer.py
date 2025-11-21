@@ -12,13 +12,11 @@ from confluent_kafka import Producer
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka import KafkaError
 
-# Add parent directory to path for imports
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from aggregator.price_aggregator import PriceAggregator
 from retry.retry_handler import RetryHandler, RetryableError, PermanentError
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -47,36 +45,29 @@ class AvroOrderConsumer:
         self.schema_registry_url = schema_registry_url
         self.consumer_group_id = consumer_group_id
         
-        # Consumer configuration
         avro_consumer_config = {
             'bootstrap.servers': kafka_broker_address,
             'schema.registry.url': schema_registry_url,
             'group.id': consumer_group_id,
             
-            # Offset management
-            'auto.offset.reset': 'earliest',  # Start from beginning if no offset
-            'enable.auto.commit': False,  # Manual commit for reliability
+            'auto.offset.reset': 'earliest', 
+            'enable.auto.commit': False, 
             
-            # Consumer behavior
-            'max.poll.interval.ms': 300000,  # 5 minutes max processing time
+            'max.poll.interval.ms': 300000,  
             'session.timeout.ms': 45000,
             'heartbeat.interval.ms': 3000,
             
-            # Fetch settings
             'fetch.min.bytes': 1,
         }
         
-        # Initialize consumer
         self.avro_consumer = AvroConsumer(avro_consumer_config)
         
-        # Initialize DLQ producer
         dead_letter_queue_config = {
             'bootstrap.servers': kafka_broker_address,
             'compression.type': 'snappy',
         }
         self.dead_letter_queue_producer = Producer(dead_letter_queue_config)
         
-        # Initialize components
         self.price_aggregator = PriceAggregator()
         self.retry_handler = RetryHandler(
             maximum_retry_attempts=3,
@@ -85,7 +76,6 @@ class AvroOrderConsumer:
             maximum_retry_delay=10.0
         )
         
-        # Statistics
         self.processing_statistics = {
             'processed': 0,
             'failed': 0,
@@ -106,23 +96,19 @@ class AvroOrderConsumer:
             RetryableError: For temporary failures
             PermanentError: For permanent failures
         """
-        # Validate order data
         if not all(key in order_data for key in ['orderId', 'product', 'price']):
             raise PermanentError(f"Invalid order format: missing required fields")
         
         if order_data['price'] <= 0:
             raise PermanentError(f"Invalid price: {order_data['price']}")
         
-        # Simulate occasional processing failure for demo (5% chance)
-        # Comment out in production
+
         import random
         if random.random() < 0.05:
             raise RetryableError("Simulated temporary processing failure")
         
-        # Update aggregation
         running_average = self.price_aggregator.update(order_data['product'], order_data['price'])
         
-        # Log processed order
         logger.info(
             f"✓ Processed [{order_data['orderId']}] {order_data['product']} @ ${order_data['price']:.2f} "
             f"| Running Avg: ${running_average:.2f}"
@@ -132,13 +118,8 @@ class AvroOrderConsumer:
         """
         Send failed message to Dead Letter Queue
         
-        Args:
-            kafka_message: Original Kafka message
-            processing_error: Exception that caused the failure
-            attempted_retries: Number of retry attempts made
         """
         try:
-            # Create DLQ message with metadata
             dead_letter_message = {
                 'original_topic': kafka_message.topic(),
                 'original_partition': kafka_message.partition(),
@@ -152,7 +133,6 @@ class AvroOrderConsumer:
                 'consumer_group': self.consumer_group_id
             }
             
-            # Produce to DLQ
             self.dead_letter_queue_producer.produce(
                 topic='orders-dlq',
                 key=kafka_message.key(),
@@ -171,10 +151,6 @@ class AvroOrderConsumer:
     def consume_messages(self, subscribed_topics=['orders'], maximum_message_count=None):
         """
         Consume and process messages from Kafka topics
-        
-        Args:
-            subscribed_topics: List of topics to subscribe to
-            maximum_message_count: Maximum number of messages to process (None for infinite)
         """
         self.avro_consumer.subscribe(subscribed_topics)
         
@@ -185,12 +161,10 @@ class AvroOrderConsumer:
         
         try:
             while True:
-                # Check if max messages reached
                 if maximum_message_count and processed_message_count >= maximum_message_count:
                     logger.info(f"Reached max messages limit: {maximum_message_count}")
                     break
                 
-                # Poll for messages
                 kafka_message = self.avro_consumer.poll(timeout=1.0)
                 
                 if kafka_message is None:
@@ -198,13 +172,11 @@ class AvroOrderConsumer:
                 
                 if kafka_message.error():
                     if kafka_message.error().code() == KafkaError._PARTITION_EOF:
-                        # End of partition - not an error
                         continue
                     else:
                         logger.error(f"Consumer error: {kafka_message.error()}")
                         continue
                 
-                # Process message with retry logic
                 try:
                     self.retry_handler.execute_with_retry(
                         self.process_order,
@@ -212,13 +184,11 @@ class AvroOrderConsumer:
                         error_context=f"Order {kafka_message.value().get('orderId', 'UNKNOWN')}"
                     )
                     
-                    # Commit offset after successful processing
                     self.avro_consumer.commit(message=kafka_message)
                     self.processing_statistics['processed'] += 1
                     processed_message_count += 1
                     
                 except PermanentError as e:
-                    # Send to DLQ and commit to move forward
                     self.send_to_dlq(kafka_message, e, attempted_retries=self.retry_handler.maximum_retry_attempts)
                     self.avro_consumer.commit(message=kafka_message)
                     self.processing_statistics['failed'] += 1
@@ -240,24 +210,20 @@ class AvroOrderConsumer:
     def print_statistics(self):
         """Print consumer statistics"""
         logger.info("\n" + "=" * 80)
-        logger.info("📈 CONSUMER STATISTICS")
         logger.info("=" * 80)
         logger.info(f"Messages Processed: {self.processing_statistics['processed']}")
         logger.info(f"Messages Failed: {self.processing_statistics['failed']}")
         logger.info(f"Sent to DLQ: {self.processing_statistics['sent_to_dlq']}")
         logger.info("=" * 80 + "\n")
         
-        # Print aggregation summary
         self.price_aggregator.print_summary()
     
     def close(self):
         """Close consumer and producer connections"""
         logger.info("\nClosing consumer...")
         
-        # Print final statistics
         self.print_statistics()
         
-        # Close connections
         self.avro_consumer.close()
         self.dead_letter_queue_producer.flush()
         
@@ -265,16 +231,13 @@ class AvroOrderConsumer:
 
 
 def main():
-    """Main execution function"""
     try:
-        # Initialize consumer
         order_consumer = AvroOrderConsumer()
         
-        # Start consuming messages
-        # Set maximum_message_count=None for continuous consumption
+        
         order_consumer.consume_messages(
             subscribed_topics=['orders'],
-            maximum_message_count=None  # Process all messages
+            maximum_message_count=None 
         )
         
     except Exception as e:

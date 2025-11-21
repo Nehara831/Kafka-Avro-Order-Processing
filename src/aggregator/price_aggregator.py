@@ -36,23 +36,15 @@ class PriceAggregator:
         """
         Update running average for a product
         
-        Args:
-            product_name: Product name
-            product_price: Product price
-            
-        Returns:
-            Updated average price for the product
         """
         statistics = self.product_statistics[product_name]
         
-        # Update statistics
         statistics.order_count += 1
         statistics.price_sum += product_price
         statistics.average_price = statistics.price_sum / statistics.order_count
         statistics.minimum_price = min(statistics.minimum_price, product_price)
         statistics.maximum_price = max(statistics.maximum_price, product_price)
         
-        # Update totals
         self.total_order_count += 1
         self.total_revenue_amount += product_price
         
@@ -62,11 +54,6 @@ class PriceAggregator:
         """
         Get current average for a product
         
-        Args:
-            product_name: Product name
-            
-        Returns:
-            Average price (0.0 if product not found)
         """
         return self.product_statistics[product_name].average_price if product_name in self.product_statistics else 0.0
     
@@ -74,11 +61,7 @@ class PriceAggregator:
         """
         Get detailed statistics for a product
         
-        Args:
-            product_name: Product name
             
-        Returns:
-            Dictionary with count, sum, average, min, max
         """
         if product_name not in self.product_statistics:
             return {
@@ -102,8 +85,7 @@ class PriceAggregator:
         """
         Get statistics for all products
         
-        Returns:
-            Dictionary mapping product names to their statistics
+        
         """
         return {
             product_name: self.get_statistics(product_name)
@@ -114,8 +96,7 @@ class PriceAggregator:
         """
         Get overall aggregation statistics
         
-        Returns:
-            Dictionary with total orders, revenue, and average order value
+        
         """
         average_order_value = self.total_revenue_amount / self.total_order_count if self.total_order_count > 0 else 0.0
         
@@ -132,7 +113,6 @@ class PriceAggregator:
         logger.info("📊 PRICE AGGREGATION SUMMARY")
         logger.info("=" * 80)
         
-        # Overall statistics
         overall_stats = self.get_overall_statistics()
         logger.info(f"\n🔢 Overall Statistics:")
         logger.info(f"   Total Orders: {overall_stats['total_orders']}")
@@ -140,13 +120,11 @@ class PriceAggregator:
         logger.info(f"   Average Order Value: ${overall_stats['average_order_value']:.2f}")
         logger.info(f"   Unique Products: {overall_stats['unique_products']}")
         
-        # Per-product statistics
         logger.info(f"\n📦 Per-Product Statistics:")
         logger.info("-" * 80)
         logger.info(f"{'Product':<20} {'Count':>8} {'Average':>12} {'Min':>12} {'Max':>12}")
         logger.info("-" * 80)
         
-        # Sort by count (most popular first)
         sorted_products = sorted(
             self.product_statistics.items(),
             key=lambda x: x[1].order_count,
@@ -169,12 +147,9 @@ class PriceAggregator:
         logger.info("Aggregator state reset")
 
 
-# Example usage
 if __name__ == "__main__":
-    # Create aggregator
     price_aggregator = PriceAggregator()
     
-    # Sample data
     sample_test_orders = [
         ('Laptop', 999.99),
         ('Mouse', 25.50),
@@ -188,10 +163,8 @@ if __name__ == "__main__":
         ('Mouse', 19.99),
     ]
     
-    # Process orders
     for product_name, product_price in sample_test_orders:
         running_average = price_aggregator.update(product_name, product_price)
         print(f"Added {product_name} @ ${product_price:.2f} -> Running avg: ${running_average:.2f}")
     
-    # Print summary
     price_aggregator.print_summary()

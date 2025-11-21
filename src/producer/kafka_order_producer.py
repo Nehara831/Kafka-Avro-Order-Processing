@@ -11,7 +11,6 @@ import json
 import logging
 from confluent_kafka import Producer
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -26,8 +25,6 @@ class KafkaOrderProducer:
         """
         Initialize the order producer
         
-        Args:
-            kafka_broker_address: Kafka broker address
         """
         self.kafka_broker_address = kafka_broker_address
         
@@ -36,14 +33,14 @@ class KafkaOrderProducer:
             'bootstrap.servers': kafka_broker_address,
             
             # Reliability settings
-            'acks': 'all',  # Wait for all replicas
-            'retries': 3,  # Built-in retries
+            'acks': 'all',  
+            'retries': 3,  
             'max.in.flight.requests.per.connection': 5,
-            'enable.idempotence': True,  # Exactly-once semantics
+            'enable.idempotence': True,  
             
             # Performance settings
             'batch.size': 16384,
-            'linger.ms': 10,  # Wait 10ms for batching
+            'linger.ms': 10,  
             'compression.type': 'snappy',
             
             # Timeout settings
@@ -51,7 +48,6 @@ class KafkaOrderProducer:
             'delivery.timeout.ms': 120000,
         }
         
-        # Initialize producer
         self.kafka_producer = Producer(self.producer_config)
         
         logger.info(f"Order Producer initialized - Broker: {kafka_broker_address}")
@@ -67,7 +63,6 @@ class KafkaOrderProducer:
         if delivery_error:
             logger.error(f"❌ Delivery failed for order: {delivery_error}")
         else:
-            # kafka_message.key() contains the orderId if we set it
             order_key = kafka_message.key().decode('utf-8') if kafka_message.key() else "UNKNOWN"
             logger.info(
                 f"✓ Delivered [{order_key}] to {kafka_message.topic()} "
@@ -77,10 +72,7 @@ class KafkaOrderProducer:
     def generate_order(self, order_sequence_number):
         """
         Generate a random order message
-        
-        Args:
-            order_sequence_number: Order identifier
-            
+                    
         Returns:
             Order dictionary
         """
@@ -89,7 +81,6 @@ class KafkaOrderProducer:
             'Webcam', 'USB Cable', 'External Drive', 'Mouse Pad', 'Docking Station'
         ]
         
-        # Price ranges for different products
         price_ranges = {
             'Laptop': (799.99, 1999.99),
             'Mouse': (19.99, 79.99),
@@ -120,12 +111,9 @@ class KafkaOrderProducer:
         """
         Produce a single order message
         
-        Args:
-            order_data: Order dictionary
-            target_topic: Target Kafka topic
+        
         """
         try:
-            # Serialize to JSON
             serialized_order = json.dumps(order_data).encode('utf-8')
             
             self.kafka_producer.produce(
@@ -134,7 +122,7 @@ class KafkaOrderProducer:
                 value=serialized_order,
                 callback=self.delivery_callback
             )
-            self.kafka_producer.poll(0)  # Trigger delivery callbacks
+            self.kafka_producer.poll(0)  
             
         except Exception as e:
             logger.error(f"Failed to produce order {order_data['orderId']}: {e}")
@@ -143,10 +131,7 @@ class KafkaOrderProducer:
         """
         Produce a batch of order messages
         
-        Args:
-            message_count: Number of messages to produce
-            message_interval: Delay between messages (seconds)
-            target_topic: Target Kafka topic
+        
         """
         logger.info(f"🚀 Starting to produce {message_count} orders to topic '{target_topic}'...")
         logger.info("=" * 70)
@@ -183,11 +168,9 @@ def main():
         # Initialize producer
         order_producer = KafkaOrderProducer()
         
-        # Produce a batch of orders
-        # Adjust message_count and message_interval as needed
         order_producer.produce_batch(
-            message_count=30,        # Number of orders
-            message_interval=0.5,    # Delay between messages (seconds)
+            message_count=30,        
+            message_interval=0.5,    
             target_topic='orders'
         )
         

@@ -1,14 +1,12 @@
 #!/bin/bash
 
-# Setup Kafka Topics Script
-# Creates necessary topics for the order processing system
+
 
 BOOTSTRAP_SERVER="localhost:9092"
 
 echo "=== Creating Kafka Topics ==="
 echo ""
 
-# Wait for Kafka to be ready
 echo "Waiting for Kafka to be ready..."
 sleep 5
 
