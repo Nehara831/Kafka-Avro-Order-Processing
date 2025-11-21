@@ -1,0 +1,29 @@
+{
+  "namespace": "com.bigdata.orders",
+  "type": "record",
+  "name": "Order",
+  "doc": "Order message schema for Kafka processing",
+  "fields": [
+    {
+      "name": "orderId",
+      "type": "string",
+      "doc": "Unique order identifier"
+    },
+    {
+      "name": "product",
+      "type": "string",
+      "doc": "Product name"
+    },
+    {
+      "name": "price",
+      "type": "float",
+      "doc": "Product price"
+    },
+    {
+      "name": "timestamp",
+      "type": "long",
+      "logicalType": "timestamp-millis",
+      "doc": "Order timestamp in milliseconds"
+    }
+  ]
+}
